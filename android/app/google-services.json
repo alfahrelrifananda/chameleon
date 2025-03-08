@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "33959252425",
+    "firebase_url": "https://gallery25-a1678-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "gallery25-a1678",
+    "storage_bucket": "gallery25-a1678.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:33959252425:android:26722da978b41852f65818",
+        "android_client_info": {
+          "package_name": "com.example.gnoo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "33959252425-aebs5fmvl0l3scevb1vc25oh1ae0307h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNt7v8p7SPObNDeRSHejBRpr1KxlSqtKw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "33959252425-aebs5fmvl0l3scevb1vc25oh1ae0307h.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "33959252425-lgu9d4lrl9sjjvlv6l539onscen4rgjp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.gallery25"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
