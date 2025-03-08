@@ -1,16 +1,56 @@
-# gnoo
+# Chameleon: Galeri Online Open Source dengan Flutter
 
-A new Flutter project.
+Chameleon adalah aplikasi galeri online open source yang dibangun dengan Flutter. Aplikasi ini dirancang untuk memberikan pengalaman yang mulus dan intuitif bagi pengguna untuk mengelola dan menampilkan koleksi foto dan video mereka.
 
-## Getting Started
+## Fitur Utama
 
-This project is a starting point for a Flutter application.
+* **Antarmuka Pengguna yang Menarik:** Antarmuka pengguna yang modern dan responsif untuk pengalaman visual yang menyenangkan.
+* **Manajemen Media yang Mudah:** Unggah, atur, dan hapus foto dan video dengan mudah.
+* **Album dan Koleksi:** Atur media ke dalam album dan koleksi untuk penelusuran yang mudah.
+* **Pencarian Cepat:** Temukan foto dan video dengan cepat menggunakan fitur pencarian yang canggih.
+* **Open Source dan Dapat Disesuaikan:** Sesuaikan aplikasi sesuai kebutuhan Anda.
+* **Lintas Platform:** Berjalan di Android, iOS, dan web.
 
-A few resources to get you started if this is your first Flutter project:
+## Cara Memulai
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1.  **Prasyarat:**
+    * Flutter SDK terinstal
+    * Android Studio atau Xcode (tergantung platform target)
+    * Git
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+2.  **Kloning repositori:**
+
+    ```bash
+    git clone https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github
+    cd chameleon
+    ```
+
+3.  **Dapatkan dependensi:**
+
+    ```bash
+    flutter pub get
+    ```
+
+4.  **Jalankan aplikasi:**
+
+    ```bash
+    flutter run
+    ```
+
+## Kontribusi
+
+Kami menyambut kontribusi dari komunitas. Jika Anda ingin berkontribusi pada Chameleon, silakan ikuti langkah-langkah berikut:
+
+1.  Fork repositori.
+2.  Buat branch fitur Anda (`git checkout -b fitur/fitur-baru`).
+3.  Lakukan perubahan Anda (`git commit -am 'Tambahkan fitur baru'`).
+4.  Dorong ke branch (`git push origin fitur/fitur-baru`).
+5.  Buat Pull Request baru.
+
+## Lisensi
+
+Chameleon dilisensikan di bawah Lisensi GPL-3.0.
+
+## Dukungan
+
+Jika Anda memiliki pertanyaan atau masalah, silakan buka masalah di GitHub.
