@@ -21,7 +21,7 @@ Chameleon adalah aplikasi galeri online open source yang dibangun dengan Flutter
 2.  **Kloning repositori:**
 
     ```bash
-    git clone https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github
+    git clone https://github.com/alfahrelrifananda/chameleon.git
     cd chameleon
     ```
 
