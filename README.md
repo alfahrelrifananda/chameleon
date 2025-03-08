@@ -1,5 +1,3 @@
-Tentu, berikut adalah README yang telah diperbarui dengan mengganti "sumber terbuka" menjadi "open source":
-
 # Chameleon: Galeri Online Open Source dengan Flutter
 
 Chameleon adalah aplikasi galeri online open source yang dibangun dengan Flutter. Aplikasi ini dirancang untuk memberikan pengalaman yang mulus dan intuitif bagi pengguna untuk mengelola dan menampilkan koleksi foto dan video mereka.
@@ -51,7 +49,7 @@ Kami menyambut kontribusi dari komunitas. Jika Anda ingin berkontribusi pada Cha
 
 ## Lisensi
 
-Chameleon dilisensikan di bawah Lisensi MIT.
+Chameleon dilisensikan di bawah Lisensi GPL-3.0.
 
 ## Dukungan
 
