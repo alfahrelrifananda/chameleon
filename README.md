@@ -1,22 +1,23 @@
-# Chameleon: Galeri Online Open Source dengan Flutter
+# Chameleon, Aplikasi Galeri Online Open Source dengan Flutter
 
 Chameleon adalah aplikasi galeri online open source yang dibangun dengan Flutter. Aplikasi ini dirancang untuk memberikan pengalaman yang mulus dan intuitif bagi pengguna untuk mengelola dan menampilkan koleksi foto dan video mereka.
 
 ## Fitur Utama
 
-* **Antarmuka Pengguna yang Menarik:** Antarmuka pengguna yang modern dan responsif untuk pengalaman visual yang menyenangkan.
-* **Manajemen Media yang Mudah:** Unggah, atur, dan hapus foto dan video dengan mudah.
-* **Album dan Koleksi:** Atur media ke dalam album dan koleksi untuk penelusuran yang mudah.
-* **Pencarian Cepat:** Temukan foto dan video dengan cepat menggunakan fitur pencarian yang canggih.
-* **Open Source dan Dapat Disesuaikan:** Sesuaikan aplikasi sesuai kebutuhan Anda.
-* **Lintas Platform:** Berjalan di Android, iOS, dan web.
+- **Antarmuka Pengguna yang Menarik:** Antarmuka pengguna yang modern dan responsif untuk pengalaman visual yang menyenangkan.
+- **Manajemen Media yang Mudah:** Unggah, atur, dan hapus foto dan video dengan mudah.
+- **Album dan Koleksi:** Atur media ke dalam album dan koleksi untuk penelusuran yang mudah.
+- **Pencarian Cepat:** Temukan foto dan video dengan cepat menggunakan fitur pencarian yang canggih.
+- **Open Source dan Dapat Disesuaikan:** Sesuaikan aplikasi sesuai kebutuhan Anda.
+- **Lintas Platform:** Berjalan di Android, iOS, dan web.
 
 ## Cara Memulai
 
 1.  **Prasyarat:**
-    * Flutter SDK terinstal
-    * Android Studio atau Xcode (tergantung platform target)
-    * Git
+
+    - Flutter SDK terinstal
+    - Android Studio atau VSCode
+    - Git
 
 2.  **Kloning repositori:**
 
