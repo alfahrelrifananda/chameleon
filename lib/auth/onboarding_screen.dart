@@ -462,7 +462,7 @@ class OnboardingPage extends StatelessWidget {
                 svgContent = svgContent
                     .replaceAll('#000000', theme.colorScheme.primary.toHex())
                     .replaceAll('#777777', theme.colorScheme.primaryContainer.toHex())
-                    .replaceAll('#424242', theme.colorScheme.primaryContainer.toHex())
+                    .replaceAll('#424242', theme.colorScheme.primary.toHex())
                     .replaceAll('#263238', '#263238')
                     .replaceAll('#FFB573', '#FFB573')
                     .replaceAll(

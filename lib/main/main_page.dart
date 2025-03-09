@@ -382,6 +382,13 @@ class _MainPageState extends State<MainPage> {
               ),
             ],
           ),
+          floatingActionButton:
+              !viewStyleProvider.isFloatingNavbar && _isNavBarVisible
+                  ? Padding(
+                      padding: const EdgeInsets.only(bottom: 80),
+                      child: _buildMainFAB(colorScheme),
+                    )
+                  : null,
         ));
   }
 
@@ -747,8 +754,6 @@ class _MainPageState extends State<MainPage> {
           ],
         ));
   }
-
-  
 
   // Build individual navigation item
   Widget _buildNavItem(
