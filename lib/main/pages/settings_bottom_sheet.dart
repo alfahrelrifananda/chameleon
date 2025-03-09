@@ -292,7 +292,7 @@ class SettingsPage extends StatelessWidget {
                                 color: Theme.of(context).colorScheme.primary),
                             const SizedBox(width: 8),
                             Text(
-                              'Lihat kode sumber di GitHub',
+                              'Lihat Source code',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium
