@@ -66,30 +66,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
       try {
         setState(() => _isLoading = true);
 
-        // Create user with email and password
         final UserCredential userCredential =
             await _auth.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
 
-        // Create user document in Firestore
         await _firestore
             .collection('koleksi_users')
             .doc(userCredential.user!.uid)
             .set({
           'username': _usernameController.text.trim(),
           'email': _emailController.text.trim(),
-          'nama_lengkap': '', // Empty for now, to be filled later
-          'alamat': '', // Empty for now, to be filled later
+          'nama_lengkap': '',
+          'alamat': '',
           'created_at': FieldValue.serverTimestamp(),
           'is_email_verified': false,
         });
 
-        // Send email verification
         await userCredential.user!.sendEmailVerification();
 
-        // Navigate to email verification screen
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(

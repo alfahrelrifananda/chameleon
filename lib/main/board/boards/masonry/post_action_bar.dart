@@ -26,11 +26,14 @@ class _PostActionBarState extends State<PostActionBar> {
   bool isSaved = false;
   bool isLoading = false;
   bool isBookmarkLoading = false;
+  int currentLikeCount = 0;
+  int currentCommentCount = 0;
   final _firestore = FirebaseFirestore.instance;
   // ignore: unused_field
   final _postService = PostService();
   late Stream<DocumentSnapshot> _postStream;
   late Stream<QuerySnapshot> _bookmarkStream;
+  late Stream<QuerySnapshot> _commentStream;
 
   // Add NotificationHandler instance
   final NotificationHandler _notificationHandler = NotificationHandler();
@@ -38,8 +41,27 @@ class _PostActionBarState extends State<PostActionBar> {
   @override
   void initState() {
     super.initState();
+    // Initialize like count from the post object
+    currentLikeCount = widget.post.likes ?? 0;
     _checkIfLiked();
     _initializeStreams();
+  }
+
+  @override
+  void didUpdateWidget(PostActionBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the post object changes (e.g., during refresh), update the streams
+    if (oldWidget.post.fotoId != widget.post.fotoId) {
+      _initializeStreams();
+      _checkIfLiked();
+    }
+
+    // Update the like count if it changed in the post object
+    if (oldWidget.post.likes != widget.post.likes) {
+      setState(() {
+        currentLikeCount = widget.post.likes ?? 0;
+      });
+    }
   }
 
   void _initializeStreams() {
@@ -52,6 +74,12 @@ class _PostActionBarState extends State<PostActionBar> {
     _bookmarkStream = _firestore
         .collection('koleksi_albums')
         .where('userId', isEqualTo: widget.currentUserId)
+        .snapshots();
+
+    // Stream untuk memantau komentar
+    _commentStream = _firestore
+        .collection('koleksi_comments')
+        .where('postId', isEqualTo: widget.post.fotoId)
         .snapshots();
   }
 
@@ -80,7 +108,13 @@ class _PostActionBarState extends State<PostActionBar> {
     });
 
     final previousState = isLiked;
-    setState(() => isLiked = !isLiked); // Optimistic update
+    final previousCount = currentLikeCount;
+
+    // Optimistic update
+    setState(() {
+      isLiked = !isLiked;
+      currentLikeCount = isLiked ? currentLikeCount + 1 : currentLikeCount - 1;
+    });
 
     try {
       await _firestore.runTransaction((transaction) async {
@@ -97,13 +131,13 @@ class _PostActionBarState extends State<PostActionBar> {
           throw Exception('Post not found');
         }
 
-        final currentLikes = postDoc.data()?['likes'] ?? 0;
+        final serverLikes = postDoc.data()?['likes'] ?? 0;
         final postOwnerId = postDoc.data()?['userId'] as String?;
 
         if (likeDoc.exists) {
           transaction.delete(likeRef);
           transaction.update(postRef, {
-            'likes': currentLikes - 1,
+            'likes': serverLikes - 1,
           });
         } else {
           transaction.set(likeRef, {
@@ -112,7 +146,7 @@ class _PostActionBarState extends State<PostActionBar> {
             'timestamp': FieldValue.serverTimestamp(),
           });
           transaction.update(postRef, {
-            'likes': currentLikes + 1,
+            'likes': serverLikes + 1,
           });
 
           // Send notification only if:
@@ -152,7 +186,12 @@ class _PostActionBarState extends State<PostActionBar> {
     } catch (e) {
       print('Error toggling like: $e');
       if (mounted) {
-        setState(() => isLiked = previousState); // Rollback on error
+        // Rollback on error
+        setState(() {
+          isLiked = previousState;
+          currentLikeCount = previousCount;
+        });
+
         _showSnackBar(
           'Gagal ${isLiked ? 'unlike' : 'like'} post',
           type: SnackBarType.error,
@@ -225,8 +264,6 @@ class _PostActionBarState extends State<PostActionBar> {
       }
     }
   }
-
- 
 
   Future<void> _handleBookmarkTap() async {
     if (isBookmarkLoading) return;
@@ -327,13 +364,36 @@ class _PostActionBarState extends State<PostActionBar> {
                   ),
                   StreamBuilder<DocumentSnapshot>(
                     stream: _postStream,
+                    initialData: null,
                     builder: (context, snapshot) {
-                      final likes = snapshot.data?.get('likes') as int? ??
-                          widget.post.likes ??
-                          0;
-                      return Text(
-                        '$likes',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      if (snapshot.connectionState == ConnectionState.active &&
+                          snapshot.hasData &&
+                          snapshot.data != null) {
+                        final data =
+                            snapshot.data!.data() as Map<String, dynamic>?;
+                        if (data != null && data.containsKey('likes')) {
+                          // Only update if the server data is different from our current state
+                          final serverLikes = data['likes'] as int;
+                          if (serverLikes != currentLikeCount) {
+                            // Use Future.microtask to avoid setState during build
+                            Future.microtask(() {
+                              if (mounted) {
+                                setState(() {
+                                  currentLikeCount = serverLikes;
+                                });
+                              }
+                            });
+                          }
+                        }
+                      }
+
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: Text(
+                          '$currentLikeCount',
+                          key: ValueKey(currentLikeCount),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       );
                     },
                   ),
@@ -357,15 +417,30 @@ class _PostActionBarState extends State<PostActionBar> {
                     ),
                   ),
                   StreamBuilder<QuerySnapshot>(
-                    stream: _firestore
-                        .collection('koleksi_comments')
-                        .where('postId', isEqualTo: widget.post.fotoId)
-                        .snapshots(),
+                    stream: _commentStream,
                     builder: (context, snapshot) {
-                      final commentCount = snapshot.data?.docs.length ?? 0;
-                      return Text(
-                        '$commentCount',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      if (snapshot.connectionState == ConnectionState.active &&
+                          snapshot.hasData) {
+                        final commentCount = snapshot.data!.docs.length;
+                        if (commentCount != currentCommentCount) {
+                          // Use Future.microtask to avoid setState during build
+                          Future.microtask(() {
+                            if (mounted) {
+                              setState(() {
+                                currentCommentCount = commentCount;
+                              });
+                            }
+                          });
+                        }
+                      }
+
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: Text(
+                          '$currentCommentCount',
+                          key: ValueKey(currentCommentCount),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       );
                     },
                   ),

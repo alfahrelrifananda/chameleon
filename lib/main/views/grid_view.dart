@@ -45,11 +45,13 @@ class GridBoardViewState extends State<GridBoardView>
   late AnimationController _animationController;
   // ignore: unused_field
   late Animation<double> _slideAnimation;
+  // Add a map to track post IDs to prevent duplicates
+  final Map<String, Post> _postsMap = {};
 
   @override
   void initState() {
     super.initState();
-    _posts = widget.posts;
+    _updatePostsList(widget.posts);
 
     // Initialize animation controller
     _animationController = AnimationController(
@@ -67,6 +69,15 @@ class GridBoardViewState extends State<GridBoardView>
     ));
 
     widget.scrollController.addListener(_scrollListener);
+  }
+
+  // Helper method to update posts list and map
+  void _updatePostsList(List<Post> newPosts) {
+    _postsMap.clear();
+    for (final post in newPosts) {
+      _postsMap[post.fotoId] = post;
+    }
+    _posts = _postsMap.values.toList();
   }
 
   @override
@@ -120,6 +131,33 @@ class GridBoardViewState extends State<GridBoardView>
           );
         },
       ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () async {
+      //     // Show loading indicator
+      //     ScaffoldMessenger.of(context).showSnackBar(
+      //       const SnackBar(
+      //         content: Text('Refreshing...'),
+      //         duration: Duration(seconds: 1),
+      //       ),
+      //     );
+
+      //     // Call the refresh function
+      //     await widget.onRefresh();
+
+      //     if (mounted) {
+      //       // Show success message
+      //       ScaffoldMessenger.of(context).showSnackBar(
+      //         SnackBar(
+      //           content: const Text('Refresh complete!'),
+      //           backgroundColor: Theme.of(context).colorScheme.primary,
+      //           duration: const Duration(seconds: 1),
+      //         ),
+      //       );
+      //     }
+      //   },
+      //   tooltip: 'Refresh',
+      //   child: const Icon(Icons.refresh),
+      // ),
       body: RefreshIndicator(
         onRefresh: widget.onRefresh,
         displacement: 100.0,
@@ -399,7 +437,7 @@ class GridBoardViewState extends State<GridBoardView>
     super.didUpdateWidget(oldWidget);
     if (widget.posts != oldWidget.posts) {
       setState(() {
-        _posts = widget.posts;
+        _updatePostsList(widget.posts);
       });
     }
 

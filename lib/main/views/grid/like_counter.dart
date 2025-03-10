@@ -19,6 +19,7 @@ class LikeCounter extends StatefulWidget {
 class _LikeCounterState extends State<LikeCounter> {
   bool isLiked = false;
   bool isLoading = false;
+  int currentLikeCount = 0;
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
   final NotificationHandler _notificationHandler = NotificationHandler();
@@ -27,9 +28,35 @@ class _LikeCounterState extends State<LikeCounter> {
   @override
   void initState() {
     super.initState();
+    // Initialize like count from the post object
+    currentLikeCount = widget.post.likes ?? 0;
+
     if (_auth.currentUser != null) {
       _checkIfLiked();
     }
+    _initializeStream();
+  }
+
+  @override
+  void didUpdateWidget(LikeCounter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the post object changes (e.g., during refresh), update the stream
+    if (oldWidget.post.fotoId != widget.post.fotoId) {
+      _initializeStream();
+      if (_auth.currentUser != null) {
+        _checkIfLiked();
+      }
+    }
+
+    // Update the like count if it changed in the post object
+    if (oldWidget.post.likes != widget.post.likes) {
+      setState(() {
+        currentLikeCount = widget.post.likes ?? 0;
+      });
+    }
+  }
+
+  void _initializeStream() {
     _postStream = _firestore
         .collection('koleksi_posts')
         .doc(widget.post.fotoId)
@@ -61,7 +88,13 @@ class _LikeCounterState extends State<LikeCounter> {
     });
 
     final previousState = isLiked;
-    setState(() => isLiked = !isLiked); // Optimistic update
+    final previousCount = currentLikeCount;
+
+    // Optimistic update
+    setState(() {
+      isLiked = !isLiked;
+      currentLikeCount = isLiked ? currentLikeCount + 1 : currentLikeCount - 1;
+    });
 
     try {
       await _firestore.runTransaction((transaction) async {
@@ -78,14 +111,14 @@ class _LikeCounterState extends State<LikeCounter> {
           throw Exception('Post not found');
         }
 
-        final currentLikes = postDoc.data()?['likes'] ?? 0;
+        final serverLikes = postDoc.data()?['likes'] ?? 0;
         final postOwnerId = postDoc.data()?['userId'] as String?;
 
         if (likeDoc.exists) {
           // Unlike post
           transaction.delete(likeRef);
           transaction.update(postRef, {
-            'likes': currentLikes - 1,
+            'likes': serverLikes - 1,
           });
         } else {
           // Like post
@@ -95,7 +128,7 @@ class _LikeCounterState extends State<LikeCounter> {
             'timestamp': FieldValue.serverTimestamp(),
           });
           transaction.update(postRef, {
-            'likes': currentLikes + 1,
+            'likes': serverLikes + 1,
           });
 
           // Send notification only if:
@@ -112,11 +145,6 @@ class _LikeCounterState extends State<LikeCounter> {
             if (currentUserDoc.exists) {
               final userData = currentUserDoc.data()!;
               final username = userData['username'] ?? 'Unknown User';
-
-              // Get post data for notification
-              final postData = postDoc.data()!;
-              // ignore: unused_local_variable
-              final postImage = postData['lokasiFile'] as String?;
 
               // Create notification
               await _notificationHandler.createCommentNotification(
@@ -135,7 +163,12 @@ class _LikeCounterState extends State<LikeCounter> {
     } catch (e) {
       print('Error toggling like: $e');
       if (mounted) {
-        setState(() => isLiked = previousState); // Rollback on error
+        // Rollback on error
+        setState(() {
+          isLiked = previousState;
+          currentLikeCount = previousCount;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to ${isLiked ? 'unlike' : 'like'} the post'),
@@ -203,24 +236,33 @@ class _LikeCounterState extends State<LikeCounter> {
             const SizedBox(width: 4),
             StreamBuilder<DocumentSnapshot>(
               stream: _postStream,
+              initialData: null,
               builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Text(
-                    _formatLikeCount(widget.post.likes ?? 0),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                  );
+                if (snapshot.connectionState == ConnectionState.active &&
+                    snapshot.hasData &&
+                    snapshot.data != null) {
+                  final data = snapshot.data!.data() as Map<String, dynamic>?;
+                  if (data != null && data.containsKey('likes')) {
+                    // Only update if the server data is different from our current state
+                    final serverLikes = data['likes'] as int;
+                    if (serverLikes != currentLikeCount) {
+                      // Use Future.microtask to avoid setState during build
+                      Future.microtask(() {
+                        if (mounted) {
+                          setState(() {
+                            currentLikeCount = serverLikes;
+                          });
+                        }
+                      });
+                    }
+                  }
                 }
-
-                final data = snapshot.data?.data() as Map<String, dynamic>?;
-                final likes = data?['likes'] ?? widget.post.likes ?? 0;
 
                 return AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
                   child: Text(
-                    _formatLikeCount(likes),
-                    key: ValueKey(likes),
+                    _formatLikeCount(currentLikeCount),
+                    key: ValueKey(currentLikeCount),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),

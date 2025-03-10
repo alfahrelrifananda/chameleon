@@ -1,22 +1,23 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:page_transition/page_transition.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:page_transition/page_transition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 import '../pages/post_model.dart';
 import '../pages/post_service.dart';
-import 'profiles/follow_post_page.dart';
-import 'profiles/edit_post_subpage.dart';
-import 'profiles/edit_profile_subpages.dart';
-import 'profiles/follow_list_page.dart';
 import '../views/grid/post_info.dart';
 import '../views/grid/reels_view_page.dart';
+import 'profiles/edit_post_subpage.dart';
+import 'profiles/follow_post_page.dart';
+import 'profiles/edit_profile_subpages.dart';
+import 'profiles/follow_list_page.dart';
 import '../pages/settings_bottom_sheet.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
@@ -50,10 +51,9 @@ class _ProfilePageState extends State<ProfilePage>
   late TabController _tabController;
   late AnimationController _rotationController;
 
-  final GlobalKey<_PostsGridState> _createdPostsKey =
-      GlobalKey<_PostsGridState>();
-  final GlobalKey<_PostsGridState> _favoritePostsKey =
-      GlobalKey<_PostsGridState>();
+  StreamSubscription<DocumentSnapshot>? _userSubscription;
+  StreamSubscription<QuerySnapshot>? _followersSubscription;
+  StreamSubscription<QuerySnapshot>? _followingSubscription;
 
   @override
   void initState() {
@@ -70,35 +70,73 @@ class _ProfilePageState extends State<ProfilePage>
   void dispose() {
     _tabController.dispose();
     _rotationController.dispose();
+    _userSubscription?.cancel();
+    _followersSubscription?.cancel();
+    _followingSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> _handleRefresh() async {
+    // This is now just a fallback for manual refresh
+    // Most updates will happen automatically through streams
     await _loadUserData();
-    if (_tabController.index == 0) {
-      await (_PostsGrid(
-                  key: const PageStorageKey('dibuat'),
-                  type: 'dibuat',
-                  uid: _uid)
-              .key as GlobalKey<_PostsGridState>)
-          .currentState
-          ?.loadPosts();
-    } else {
-      await (_PostsGrid(
-                  key: const PageStorageKey('favorit'),
-                  type: 'favorit',
-                  uid: _uid)
-              .key as GlobalKey<_PostsGridState>)
-          .currentState
-          ?.loadPosts();
-    }
-
-    if (_tabController.index == 0) {
-      await _createdPostsKey.currentState?.loadPosts();
-    } else {
-      await _favoritePostsKey.currentState?.loadPosts();
-    }
     return Future.value();
+  }
+
+  void _setupRealTimeListeners() {
+    if (_uid == null) return;
+
+    // Listen for user profile changes
+    _userSubscription = _firestore
+        .collection('koleksi_users')
+        .doc(_uid)
+        .snapshots()
+        .listen((userDoc) {
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        if (mounted) {
+          setState(() {
+            _userName = userData['username'];
+            _userEmail = userData['email'];
+            _userPhotoUrl = userData['profile_image_url'];
+          });
+        }
+      }
+    }, onError: (e) {
+      print("Error listening to user data: $e");
+    });
+
+    // Listen for followers count changes
+    _followersSubscription = _firestore
+        .collection('koleksi_follows')
+        .doc(_uid)
+        .collection('userFollowers')
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _followersCount = snapshot.docs.length;
+        });
+      }
+    }, onError: (e) {
+      print("Error listening to followers: $e");
+    });
+
+    // Listen for following count changes
+    _followingSubscription = _firestore
+        .collection('koleksi_follows')
+        .doc(_uid)
+        .collection('userFollowing')
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _followingCount = snapshot.docs.length;
+        });
+      }
+    }, onError: (e) {
+      print("Error listening to following: $e");
+    });
   }
 
   Future<void> _loadCounts() async {
@@ -118,13 +156,6 @@ class _ProfilePageState extends State<ProfilePage>
           .count()
           .get();
       _followingCount = followingSnapshot.count!;
-
-      final postsSnapshot = await _firestore
-          .collection('koleksi_posts')
-          .where('userId', isEqualTo: _uid)
-          .count()
-          .get();
-      _postsCount = postsSnapshot.count!;
 
       if (mounted) {
         setState(() {});
@@ -153,6 +184,9 @@ class _ProfilePageState extends State<ProfilePage>
         }
 
         await _loadCounts();
+
+        // Set up real-time listeners after initial load
+        _setupRealTimeListeners();
       } catch (e) {
         print("ProfilePage - Error loading user data: $e");
       } finally {
@@ -253,11 +287,6 @@ class _ProfilePageState extends State<ProfilePage>
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        // Icon(
-                        //   Icons.email_outlined,
-                        //   size: 16,
-                        //   color: colorScheme.onSurfaceVariant,
-                        // ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -465,7 +494,6 @@ class _ProfilePageState extends State<ProfilePage>
 
   @override
   Widget build(BuildContext context) {
-    // ignore: unused_local_variable
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -514,7 +542,7 @@ class _ProfilePageState extends State<ProfilePage>
                         'Dibuat',
                         Icons.grid_on_rounded,
                         _tabController.index == 0,
-                        Theme.of(context).colorScheme,
+                        colorScheme,
                         onTap: () {
                           setState(() {
                             _tabController.index = 0;
@@ -529,7 +557,7 @@ class _ProfilePageState extends State<ProfilePage>
                         'Favorit',
                         Icons.favorite_border_rounded,
                         _tabController.index == 1,
-                        Theme.of(context).colorScheme,
+                        colorScheme,
                         onTap: () {
                           setState(() {
                             _tabController.index = 1;
@@ -542,13 +570,18 @@ class _ProfilePageState extends State<ProfilePage>
               ),
             ),
             if (_tabController.index == 0)
-              _PostsGrid(
+              PostsGrid(
                 key: const PageStorageKey('dibuat'),
                 type: 'dibuat',
                 uid: _uid,
+                onPostsLoaded: (count) {
+                  setState(() {
+                    _postsCount = count;
+                  });
+                },
               )
             else
-              _PostsGrid(
+              PostsGrid(
                 key: const PageStorageKey('favorit'),
                 type: 'favorit',
                 uid: _uid,
@@ -560,24 +593,92 @@ class _ProfilePageState extends State<ProfilePage>
   }
 }
 
-class _PostsGrid extends StatefulWidget {
-  const _PostsGrid({required Key key, required this.type, this.uid})
-      : super(key: key);
+class FlowerPainter extends CustomPainter {
+  final Color color;
+
+  FlowerPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final double centerX = size.width / 2;
+    final double centerY = size.height / 2;
+    final double radius = size.width / 2;
+
+    const int petalCount = 8;
+    const double petalDepth = 0.15;
+
+    final Path path = Path();
+
+    for (int i = 0; i < petalCount; i++) {
+      double angle = (i * (360 / petalCount)) * (pi / 180);
+      double nextAngle = ((i + 1) * (360 / petalCount)) * (pi / 180);
+
+      double startX = centerX + radius * (1 - petalDepth) * cos(angle);
+      double startY = centerY + radius * (1 - petalDepth) * sin(angle);
+      double endX = centerX + radius * (1 - petalDepth) * cos(nextAngle);
+      double endY = centerY + radius * (1 - petalDepth) * sin(nextAngle);
+
+      double controlX1 =
+          centerX + radius * cos(angle + (nextAngle - angle) / 3);
+      double controlY1 =
+          centerY + radius * sin(angle + (nextAngle - angle) / 3);
+      double controlX2 =
+          centerX + radius * cos(nextAngle - (nextAngle - angle) / 3);
+      double controlY2 =
+          centerY + radius * sin(nextAngle - (nextAngle - angle) / 3);
+
+      if (i == 0) {
+        path.moveTo(startX, startY);
+      }
+
+      path.cubicTo(controlX1, controlY1, controlX2, controlY2, endX, endY);
+    }
+
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
+  }
+}
+
+class PostsGrid extends StatefulWidget {
+  const PostsGrid({
+    Key? key,
+    required this.type,
+    this.uid,
+    this.onPostsLoaded,
+  }) : super(key: key);
 
   final String type;
   final String? uid;
+  final Function(int count)? onPostsLoaded;
 
   @override
-  _PostsGridState createState() => _PostsGridState();
+  PostsGridState createState() => PostsGridState();
 }
 
-class _PostsGridState extends State<_PostsGrid>
+class PostsGridState extends State<PostsGrid>
     with AutomaticKeepAliveClientMixin {
   List<Post> _posts = [];
   bool _isLoading = true;
   String? _error;
+  // ignore: unused_field
   final PostService _postService = PostService();
   final _firestore = FirebaseFirestore.instance;
+
+  // Stream subscriptions for real-time updates
+  StreamSubscription<QuerySnapshot>? _postsSubscription;
+  StreamSubscription<QuerySnapshot>? _likesSubscription;
+
+  // Map to track post IDs to prevent duplicates
+  final Map<String, Post> _postsMap = {};
 
   @override
   bool get wantKeepAlive => true;
@@ -585,18 +686,30 @@ class _PostsGridState extends State<_PostsGrid>
   @override
   void initState() {
     super.initState();
-    loadPosts();
+    setupRealTimeUpdates();
   }
 
   @override
-  void didUpdateWidget(covariant _PostsGrid oldWidget) {
+  void dispose() {
+    _postsSubscription?.cancel();
+    _likesSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant PostsGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.uid != oldWidget.uid || widget.type != oldWidget.type) {
-      loadPosts();
+      // Cancel existing subscriptions
+      _postsSubscription?.cancel();
+      _likesSubscription?.cancel();
+
+      // Setup new subscriptions
+      setupRealTimeUpdates();
     }
   }
 
-  Future<void> loadPosts() async {
+  void setupRealTimeUpdates() {
     if (widget.uid == null) {
       setState(() => _isLoading = false);
       return;
@@ -610,40 +723,122 @@ class _PostsGridState extends State<_PostsGrid>
         });
       }
 
-      final posts = widget.type == 'dibuat'
-          ? await _postService.getPostsByUser(widget.uid!)
-          : await _loadLikedPosts(widget.uid!);
-
-      if (mounted) {
-        setState(() {
-          _posts = posts;
-          _isLoading = false;
+      if (widget.type == 'dibuat') {
+        // Listen for user's posts in real-time
+        _postsSubscription = _firestore
+            .collection('koleksi_posts')
+            .where('userId', isEqualTo: widget.uid)
+            .orderBy('tanggalUnggah', descending: true)
+            .snapshots()
+            .listen((snapshot) {
+          _updatePostsFromSnapshot(snapshot);
+        }, onError: (error) {
+          _handleError('Error listening to posts: $error');
         });
+      } else {
+        // For liked posts, we need to listen to both likes and posts
+        _setupLikedPostsRealTimeUpdates();
       }
     } catch (e) {
-      print("Error loading posts: $e");
+      print("Error setting up real-time updates: $e");
       print(StackTrace.current);
       _handleError('Gagal memuat data. Tarik ke bawah untuk mencoba lagi.');
     }
   }
 
-  Future<List<Post>> _loadLikedPosts(String uid) async {
-    final likesSnapshot = await _firestore
+  void _setupLikedPostsRealTimeUpdates() {
+    // Listen for user's likes in real-time
+    _likesSubscription = _firestore
         .collection('koleksi_likes')
-        .where('userId', isEqualTo: uid)
-        .get();
+        .where('userId', isEqualTo: widget.uid)
+        .snapshots()
+        .listen((likesSnapshot) async {
+      try {
+        final postIds = likesSnapshot.docs
+            .map((doc) => doc.get('fotoId') as String)
+            .toList();
 
-    final postIds =
-        likesSnapshot.docs.map((doc) => doc.get('fotoId') as String).toList();
+        if (postIds.isEmpty) {
+          if (mounted) {
+            setState(() {
+              _posts = [];
+              _postsMap.clear();
+              _isLoading = false;
+            });
 
-    if (postIds.isEmpty) return [];
+            if (widget.onPostsLoaded != null) {
+              widget.onPostsLoaded!(0);
+            }
+          }
+          return;
+        }
 
-    final postsSnapshot = await _firestore
-        .collection('koleksi_posts')
-        .where(FieldPath.documentId, whereIn: postIds)
-        .get();
+        // We need to handle the case where there are many liked posts
+        // Firestore has a limit of 10 items in a whereIn query
+        final batches = <List<String>>[];
+        for (var i = 0; i < postIds.length; i += 10) {
+          final end = (i + 10 < postIds.length) ? i + 10 : postIds.length;
+          batches.add(postIds.sublist(i, end));
+        }
 
-    return postsSnapshot.docs.map((doc) => Post.fromFirestore(doc)).toList();
+        final allPosts = <Post>[];
+
+        for (final batch in batches) {
+          final postsSnapshot = await _firestore
+              .collection('koleksi_posts')
+              .where(FieldPath.documentId, whereIn: batch)
+              .get();
+
+          final batchPosts =
+              postsSnapshot.docs.map((doc) => Post.fromFirestore(doc)).toList();
+
+          allPosts.addAll(batchPosts);
+        }
+
+        if (mounted) {
+          _updatePostsList(allPosts);
+        }
+      } catch (e) {
+        print("Error processing likes: $e");
+        _handleError('Gagal memuat data yang disukai.');
+      }
+    }, onError: (error) {
+      _handleError('Error listening to likes: $error');
+    });
+  }
+
+  void _updatePostsFromSnapshot(QuerySnapshot snapshot) {
+    final posts = snapshot.docs.map((doc) => Post.fromFirestore(doc)).toList();
+    _updatePostsList(posts);
+  }
+
+  void _updatePostsList(List<Post> posts) {
+    // Update the posts map to track unique posts
+    _postsMap.clear();
+    for (final post in posts) {
+      _postsMap[post.fotoId] = post;
+    }
+
+    // Sort posts by date (newest first)
+    final sortedPosts = _postsMap.values.toList()
+      ..sort((a, b) => b.tanggalUnggah.compareTo(a.tanggalUnggah));
+
+    if (mounted) {
+      setState(() {
+        _posts = sortedPosts;
+        _isLoading = false;
+      });
+
+      if (widget.onPostsLoaded != null) {
+        widget.onPostsLoaded!(_posts.length);
+      }
+    }
+  }
+
+  Future<void> loadPosts() async {
+    // This method is kept for backward compatibility
+    // It will be called when the user manually refreshes
+    setupRealTimeUpdates();
   }
 
   void _handleError(String errorMessage) {
@@ -667,7 +862,7 @@ class _PostsGridState extends State<_PostsGrid>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Penting untuk AutomaticKeepAliveClientMixin
+    super.build(context); // Important for AutomaticKeepAliveClientMixin
 
     if (_isLoading) {
       return const SliverToBoxAdapter(
@@ -922,12 +1117,12 @@ class _PostsGridState extends State<_PostsGrid>
 
 class KeepAliveBuilder extends StatefulWidget {
   final Widget child;
-  final bool keepAlive; // Add the required parameter
+  final bool keepAlive;
 
   const KeepAliveBuilder({
     Key? key,
     required this.child,
-    this.keepAlive = true, // Provide a default value
+    this.keepAlive = true,
   }) : super(key: key);
 
   @override
@@ -1083,60 +1278,5 @@ class _AspectRatioLayoutBuilderState extends State<AspectRatioLayoutBuilder> {
         _imageInfo!.image.width / _imageInfo!.image.height;
 
     return widget.builder(context, aspectRatio);
-  }
-}
-
-class FlowerPainter extends CustomPainter {
-  final Color color;
-
-  FlowerPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final double centerX = size.width / 2;
-    final double centerY = size.height / 2;
-    final double radius = size.width / 2;
-
-    const int petalCount = 8;
-    const double petalDepth = 0.15;
-
-    final Path path = Path();
-
-    for (int i = 0; i < petalCount; i++) {
-      double angle = (i * (360 / petalCount)) * (pi / 180);
-      double nextAngle = ((i + 1) * (360 / petalCount)) * (pi / 180);
-
-      double startX = centerX + radius * (1 - petalDepth) * cos(angle);
-      double startY = centerY + radius * (1 - petalDepth) * sin(angle);
-      double endX = centerX + radius * (1 - petalDepth) * cos(nextAngle);
-      double endY = centerY + radius * (1 - petalDepth) * sin(nextAngle);
-
-      double controlX1 =
-          centerX + radius * cos(angle + (nextAngle - angle) / 3);
-      double controlY1 =
-          centerY + radius * sin(angle + (nextAngle - angle) / 3);
-      double controlX2 =
-          centerX + radius * cos(nextAngle - (nextAngle - angle) / 3);
-      double controlY2 =
-          centerY + radius * sin(nextAngle - (nextAngle - angle) / 3);
-
-      if (i == 0) {
-        path.moveTo(startX, startY);
-      }
-
-      path.cubicTo(controlX1, controlY1, controlX2, controlY2, endX, endY);
-    }
-
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
   }
 }

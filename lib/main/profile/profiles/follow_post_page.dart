@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
+import 'dart:async';
 
 import '../../pages/post_model.dart';
 import '../../pages/post_service.dart';
@@ -49,6 +50,9 @@ class FollowPostPageState extends State<FollowPostPage>
 
   List<DocumentSnapshot> _followingUsers = [];
 
+  // Stream subscriptions for real-time updates
+  StreamSubscription<QuerySnapshot>? _followingSubscription;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -63,6 +67,7 @@ class FollowPostPageState extends State<FollowPostPage>
   @override
   void dispose() {
     _scrollController.dispose();
+    _followingSubscription?.cancel();
     super.dispose();
   }
 
@@ -78,7 +83,7 @@ class FollowPostPageState extends State<FollowPostPage>
       final user = _auth.currentUser;
       if (user != null) {
         _currentUserId = user.uid;
-        await _loadFollowingUsers();
+        _setupRealTimeFollowingUpdates();
       } else {
         setState(() {
           _error = 'User tidak terautentikasi.';
@@ -93,37 +98,71 @@ class FollowPostPageState extends State<FollowPostPage>
     }
   }
 
-  Future<void> _loadFollowingUsers() async {
+  void _setupRealTimeFollowingUpdates() {
+    if (_currentUserId == null) return;
+
+    // Cancel any existing subscription
+    _followingSubscription?.cancel();
+
+    // Set up real-time listener for following users
+    _followingSubscription = _firestore
+        .collection('koleksi_follows')
+        .doc(_currentUserId)
+        .collection('userFollowing')
+        .snapshots()
+        .listen((snapshot) {
+      _loadFollowingUsersData(snapshot.docs);
+    }, onError: (e) {
+      print('Error in following stream: $e');
+      setState(() {
+        _error = 'Gagal memuat daftar following: $e';
+        _isLoading = false;
+      });
+    });
+  }
+
+  Future<void> _loadFollowingUsersData(
+      List<QueryDocumentSnapshot> followingDocs) async {
     try {
-      final followingSnapshot = await _firestore
-          .collection('koleksi_follows')
-          .doc(_currentUserId)
-          .collection('userFollowing')
-          .get();
+      if (followingDocs.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _followingUsers = [];
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      List<DocumentSnapshot> followingUsersData = [];
+      List<Future<DocumentSnapshot>> futures = [];
+
+      // Create a list of futures to fetch user data in parallel
+      for (var doc in followingDocs) {
+        futures.add(_firestore.collection('koleksi_users').doc(doc.id).get());
+      }
+
+      // Wait for all futures to complete
+      final results = await Future.wait(futures);
+
+      // Process results
+      for (var userDoc in results) {
+        if (userDoc.exists) {
+          followingUsersData.add(userDoc);
+        }
+      }
 
       if (mounted) {
-        List<DocumentSnapshot> followingUsersData = [];
-        for (var doc in followingSnapshot.docs) {
-          try {
-            final userDoc =
-                await _firestore.collection('koleksi_users').doc(doc.id).get();
-            if (userDoc.exists) {
-              followingUsersData.add(userDoc);
-            }
-          } catch (e) {
-            print('Error loading user data for ${doc.id}: $e');
-          }
-        }
-
         setState(() {
           _followingUsers = followingUsersData;
           _isLoading = false;
         });
       }
     } catch (e) {
+      print('Error loading following users data: $e');
       if (mounted) {
         setState(() {
-          _error = 'Gagal memuat daftar following: $e';
+          _error = 'Gagal memuat data pengguna: $e';
           _isLoading = false;
         });
       }
@@ -178,7 +217,6 @@ class FollowPostPageState extends State<FollowPostPage>
                       onSelected: (selected) {
                         setState(() {
                           _selectedUserId = null;
-                          // _isChangingFilter = true;
                         });
                       },
                     ),
@@ -203,7 +241,6 @@ class FollowPostPageState extends State<FollowPostPage>
                     onSelected: (selected) {
                       setState(() {
                         _selectedUserId = selected ? userId : null;
-                        // _isChangingFilter = true;
                       });
                     },
                   ),
@@ -233,7 +270,7 @@ class FollowPostPageState extends State<FollowPostPage>
                 else if (_isLoading)
                   const Center(child: CircularProgressIndicator())
                 else
-                  _PostsGrid(
+                  RealtimePostsGrid(
                     key: PageStorageKey(
                         'follow_posts_${_selectedUserId ?? "all"}'),
                     selectedUserId: _selectedUserId,
@@ -255,8 +292,8 @@ class FollowPostPageState extends State<FollowPostPage>
   }
 }
 
-class _PostsGrid extends StatefulWidget {
-  const _PostsGrid({
+class RealtimePostsGrid extends StatefulWidget {
+  const RealtimePostsGrid({
     required Key key,
     this.selectedUserId,
     required this.followingUsers,
@@ -266,16 +303,23 @@ class _PostsGrid extends StatefulWidget {
   final List<DocumentSnapshot> followingUsers;
 
   @override
-  _PostsGridState createState() => _PostsGridState();
+  RealtimePostsGridState createState() => RealtimePostsGridState();
 }
 
-class _PostsGridState extends State<_PostsGrid>
+class RealtimePostsGridState extends State<RealtimePostsGrid>
     with AutomaticKeepAliveClientMixin {
+  final Map<String, Post> _postsMap = {};
   List<Post> _posts = [];
   bool _isLoading = true;
-  // ignore: unused_field
+  bool _hasError = false;
+  String? _errorMessage;
+
   final _firestore = FirebaseFirestore.instance;
+  // ignore: unused_field
   final _postService = PostService();
+
+  // Stream subscriptions for real-time updates
+  List<StreamSubscription<QuerySnapshot>> _postStreams = [];
 
   @override
   bool get wantKeepAlive => true;
@@ -283,52 +327,119 @@ class _PostsGridState extends State<_PostsGrid>
   @override
   void initState() {
     super.initState();
-    _loadPosts();
+    _setupRealTimePostsUpdates();
   }
 
   @override
-  void didUpdateWidget(covariant _PostsGrid oldWidget) {
+  void dispose() {
+    _cancelAllStreams();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant RealtimePostsGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.selectedUserId != oldWidget.selectedUserId) {
-      _loadPosts();
+    if (widget.selectedUserId != oldWidget.selectedUserId ||
+        widget.followingUsers.length != oldWidget.followingUsers.length) {
+      _setupRealTimePostsUpdates();
     }
   }
 
-  Future<void> _loadPosts() async {
-    if (!mounted) return;
+  void _cancelAllStreams() {
+    for (var stream in _postStreams) {
+      stream.cancel();
+    }
+    _postStreams.clear();
+  }
 
-    setState(() => _isLoading = true);
+  void _setupRealTimePostsUpdates() {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+    });
 
-    try {
-      List<String> userIds = widget.selectedUserId != null
-          ? [widget.selectedUserId!]
-          : widget.followingUsers.map((doc) => doc.id).toList();
+    // Cancel existing streams
+    _cancelAllStreams();
 
-      if (userIds.isEmpty) {
-        setState(() {
-          _posts = [];
-          _isLoading = false;
-        });
-        return;
-      }
+    // Clear existing posts
+    _postsMap.clear();
 
-      final posts = await _postService.getFollowingPosts(userIds);
+    // Get the list of user IDs to monitor
+    List<String> userIds = widget.selectedUserId != null
+        ? [widget.selectedUserId!]
+        : widget.followingUsers.map((doc) => doc.id).toList();
 
-      if (!mounted) return;
-
+    if (userIds.isEmpty) {
       setState(() {
-        _posts = posts;
+        _posts = [];
         _isLoading = false;
       });
-    } catch (e) {
-      print("Error loading posts: $e");
-      if (!mounted) return;
+      return;
+    }
 
+    // Set up a stream for each user's posts
+    for (final userId in userIds) {
+      final postStream = _firestore
+          .collection('koleksi_posts')
+          .where('userId', isEqualTo: userId)
+          .orderBy('tanggalUnggah', descending: true)
+          .snapshots()
+          .listen((snapshot) {
+        _processPostsSnapshot(snapshot);
+      }, onError: (e) {
+        print('Error in posts stream for user $userId: $e');
+        _handleError('Gagal memuat postingan: $e');
+      });
+
+      _postStreams.add(postStream);
+    }
+
+    // If we have no streams (shouldn't happen), mark as not loading
+    if (_postStreams.isEmpty) {
       setState(() {
         _isLoading = false;
-        _posts = [];
       });
     }
+  }
+
+  void _processPostsSnapshot(QuerySnapshot snapshot) {
+    try {
+      // Process the posts from this snapshot
+      for (var doc in snapshot.docs) {
+        final post = Post.fromFirestore(doc);
+        _postsMap[post.fotoId] = post;
+      }
+
+      // Convert map to sorted list
+      final sortedPosts = _postsMap.values.toList()
+        ..sort((a, b) => b.tanggalUnggah.compareTo(a.tanggalUnggah));
+
+      if (mounted) {
+        setState(() {
+          _posts = sortedPosts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error processing posts snapshot: $e');
+      _handleError('Gagal memproses data postingan: $e');
+    }
+  }
+
+  void _handleError(String message) {
+    if (mounted) {
+      setState(() {
+        _hasError = true;
+        _errorMessage = message;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _refreshPosts() async {
+    _setupRealTimePostsUpdates();
+    return Future.value();
   }
 
   @override
@@ -339,6 +450,22 @@ class _PostsGridState extends State<_PostsGrid>
 
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_hasError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_errorMessage ?? 'Terjadi kesalahan'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _refreshPosts,
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
     }
 
     if (_posts.isEmpty) {
@@ -383,7 +510,7 @@ class _PostsGridState extends State<_PostsGrid>
               ),
               const SizedBox(height: 16),
               FilledButton(
-                onPressed: _loadPosts,
+                onPressed: _refreshPosts,
                 child: const Text('Muat Ulang'),
               ),
             ],
@@ -393,7 +520,7 @@ class _PostsGridState extends State<_PostsGrid>
     }
 
     return RefreshIndicator(
-      onRefresh: _loadPosts,
+      onRefresh: _refreshPosts,
       child: CustomScrollView(
         slivers: [
           SliverPadding(
@@ -484,12 +611,12 @@ class _PostsGridState extends State<_PostsGrid>
 
 class KeepAliveBuilder extends StatefulWidget {
   final Widget child;
-  final bool keepAlive; // Add the required parameter
+  final bool keepAlive;
 
   const KeepAliveBuilder({
     Key? key,
     required this.child,
-    this.keepAlive = true, // Provide a default value
+    this.keepAlive = true,
   }) : super(key: key);
 
   @override
