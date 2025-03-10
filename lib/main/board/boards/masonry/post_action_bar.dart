@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
+import 'dart:async';
 import '../../../pages/post_model.dart';
 import '../../../pages/post_service.dart';
 import '../notification_subpage.dart';
@@ -34,26 +35,31 @@ class _PostActionBarState extends State<PostActionBar> {
   late Stream<DocumentSnapshot> _postStream;
   late Stream<QuerySnapshot> _bookmarkStream;
   late Stream<QuerySnapshot> _commentStream;
+  // Add a stream subscription field at the top of the class
+  StreamSubscription<DocumentSnapshot>? _likeStatusStream;
 
   // Add NotificationHandler instance
   final NotificationHandler _notificationHandler = NotificationHandler();
 
+  // Update initState to not call _checkIfLiked
   @override
   void initState() {
     super.initState();
     // Initialize like count from the post object
     currentLikeCount = widget.post.likes ?? 0;
-    _checkIfLiked();
     _initializeStreams();
   }
 
+  // Update didUpdateWidget to handle changes properly
   @override
   void didUpdateWidget(PostActionBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     // If the post object changes (e.g., during refresh), update the streams
     if (oldWidget.post.fotoId != widget.post.fotoId) {
+      // Cancel existing subscription
+      _likeStatusStream?.cancel();
+
       _initializeStreams();
-      _checkIfLiked();
     }
 
     // Update the like count if it changed in the post object
@@ -64,6 +70,7 @@ class _PostActionBarState extends State<PostActionBar> {
     }
   }
 
+  // Replace the _checkIfLiked method with a real-time listener
   void _initializeStreams() {
     _postStream = _firestore
         .collection('koleksi_posts')
@@ -81,23 +88,21 @@ class _PostActionBarState extends State<PostActionBar> {
         .collection('koleksi_comments')
         .where('postId', isEqualTo: widget.post.fotoId)
         .snapshots();
-  }
 
-  Future<void> _checkIfLiked() async {
-    try {
-      final likeDoc = await _firestore
-          .collection('koleksi_likes')
-          .doc('${widget.currentUserId}_${widget.post.fotoId}')
-          .get();
-
+    // Add a stream to listen for the user's like status
+    _likeStatusStream = _firestore
+        .collection('koleksi_likes')
+        .doc('${widget.currentUserId}_${widget.post.fotoId}')
+        .snapshots()
+        .listen((likeDoc) {
       if (mounted) {
         setState(() {
           isLiked = likeDoc.exists;
         });
       }
-    } catch (e) {
+    }, onError: (e) {
       print('Error checking like status: $e');
-    }
+    });
   }
 
   Future<void> _toggleLike() async {
@@ -315,6 +320,13 @@ class _PostActionBarState extends State<PostActionBar> {
         margin: const EdgeInsets.all(16),
       ),
     );
+  }
+
+  // Update the dispose method to cancel the subscription
+  @override
+  void dispose() {
+    _likeStatusStream?.cancel();
+    super.dispose();
   }
 
   @override

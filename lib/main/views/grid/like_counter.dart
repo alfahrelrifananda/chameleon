@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../pages/post_model.dart';
 import '../../board/boards/notification_subpage.dart';
+import 'dart:async';
 
 class LikeCounter extends StatefulWidget {
   const LikeCounter({
@@ -24,16 +25,13 @@ class _LikeCounterState extends State<LikeCounter> {
   final _auth = FirebaseAuth.instance;
   final NotificationHandler _notificationHandler = NotificationHandler();
   late Stream<DocumentSnapshot> _postStream;
+  StreamSubscription<DocumentSnapshot>? _likeStatusStream;
 
   @override
   void initState() {
     super.initState();
     // Initialize like count from the post object
     currentLikeCount = widget.post.likes ?? 0;
-
-    if (_auth.currentUser != null) {
-      _checkIfLiked();
-    }
     _initializeStream();
   }
 
@@ -42,10 +40,10 @@ class _LikeCounterState extends State<LikeCounter> {
     super.didUpdateWidget(oldWidget);
     // If the post object changes (e.g., during refresh), update the stream
     if (oldWidget.post.fotoId != widget.post.fotoId) {
+      // Cancel existing subscription
+      _likeStatusStream?.cancel();
+
       _initializeStream();
-      if (_auth.currentUser != null) {
-        _checkIfLiked();
-      }
     }
 
     // Update the like count if it changed in the post object
@@ -61,23 +59,30 @@ class _LikeCounterState extends State<LikeCounter> {
         .collection('koleksi_posts')
         .doc(widget.post.fotoId)
         .snapshots();
-  }
 
-  Future<void> _checkIfLiked() async {
-    try {
-      final likeDoc = await _firestore
+    // Add a stream to listen for the user's like status
+    if (_auth.currentUser != null) {
+      // Listen for changes to the user's like status for this post
+      _likeStatusStream = _firestore
           .collection('koleksi_likes')
           .doc('${_auth.currentUser!.uid}_${widget.post.fotoId}')
-          .get();
-
-      if (mounted) {
-        setState(() {
-          isLiked = likeDoc.exists;
-        });
-      }
-    } catch (e) {
-      print('Error checking like status: $e');
+          .snapshots()
+          .listen((likeDoc) {
+        if (mounted) {
+          setState(() {
+            isLiked = likeDoc.exists;
+          });
+        }
+      }, onError: (e) {
+        print('Error checking like status: $e');
+      });
     }
+  }
+
+  @override
+  void dispose() {
+    _likeStatusStream?.cancel();
+    super.dispose();
   }
 
   Future<void> _toggleLike() async {
