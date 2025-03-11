@@ -33,7 +33,7 @@ class _ProfilePageState extends State<ProfilePage>
     with TickerProviderStateMixin {
   String? _uid;
   String? _userName;
-  String? _userEmail;
+  String? _namaLengkap;
   String? _userPhotoUrl;
 
   int _followersCount = 0;
@@ -97,7 +97,8 @@ class _ProfilePageState extends State<ProfilePage>
         if (mounted) {
           setState(() {
             _userName = userData['username'];
-            _userEmail = userData['email'];
+            _namaLengkap = userData['nama_lengkap'];
+
             _userPhotoUrl = userData['profile_image_url'];
           });
         }
@@ -178,7 +179,7 @@ class _ProfilePageState extends State<ProfilePage>
           final userData = userDoc.data() as Map<String, dynamic>;
           setState(() {
             _userName = userData['username'];
-            _userEmail = userData['email'];
+            _namaLengkap = userData['nama_lengkap'];
             _userPhotoUrl = userData['profile_image_url'];
           });
         }
@@ -290,7 +291,9 @@ class _ProfilePageState extends State<ProfilePage>
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            _userEmail ?? 'user@gmail.com',
+                            _namaLengkap != null && _namaLengkap!.isNotEmpty
+                                ? _namaLengkap!
+                                : 'Nama belum diisi, Isi Sekarang!',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
@@ -984,7 +987,9 @@ class PostsGridState extends State<PostsGrid>
                 child: IconButton(
                   icon: Icon(
                     Icons.edit,
+                    size: 14,
                   ),
+                  padding: EdgeInsets.all(1),
                   onPressed: () => _navigateToEditPost(post),
                 ),
               ),

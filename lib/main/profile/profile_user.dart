@@ -34,7 +34,7 @@ class _UserProfilePageState extends State<UserProfilePage>
     with TickerProviderStateMixin {
   late String _userId;
   String? _userName;
-  String? _userEmail;
+  String? _namaLengkap;
   String? _userPhotoUrl;
   int _followersCount = 0;
   int _followingCount = 0;
@@ -80,7 +80,7 @@ class _UserProfilePageState extends State<UserProfilePage>
         final userData = userDoc.data() as Map<String, dynamic>;
         setState(() {
           _userName = userData['username'];
-          _userEmail = userData['email'];
+          _namaLengkap = userData['nama_lengkap'];
           _userPhotoUrl = userData['profile_image_url'];
         });
       }
@@ -445,7 +445,9 @@ class _UserProfilePageState extends State<UserProfilePage>
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            _userEmail ?? 'user@gmail.com',
+                            _namaLengkap != null && _namaLengkap!.isNotEmpty
+                                ? _namaLengkap!
+                                : 'Nama belum diisi',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
@@ -454,7 +456,7 @@ class _UserProfilePageState extends State<UserProfilePage>
                                 ),
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ),
+                        )
                       ],
                     ),
                     const SizedBox(height: 12),

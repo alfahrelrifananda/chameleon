@@ -408,11 +408,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             controller: _usernameController,
                             label: 'Nama Pengguna',
                             icon: Icons.person_outline,
+                            maxLength: 25,
                             colorScheme: colorScheme,
                             textTheme: textTheme,
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Nama Pengguna tidak boleh kosong';
+                              }
+                              if (value.length > 25) {
+                                return 'Nama Pengguna maksimal 25 karakter';
                               }
                               return null;
                             },
@@ -421,9 +425,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           _buildTextField(
                             controller: _namaLengkapController,
                             label: 'Nama Lengkap',
+                            maxLength: 50,
                             icon: Icons.badge_outlined,
                             colorScheme: colorScheme,
                             textTheme: textTheme,
+                            validator: (value) {
+                              if (value != null && value.length > 50) {
+                                return 'Nama Lengkap maksimal 50 karakter';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 16),
                           _buildTextField(
@@ -431,8 +442,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             label: 'Alamat',
                             icon: Icons.location_on_outlined,
                             maxLines: 3,
+                            maxLength: 100,
                             colorScheme: colorScheme,
                             textTheme: textTheme,
+                            validator: (value) {
+                              if (value != null && value.length > 100) {
+                                return 'Alamat maksimal 100 karakter';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 16),
                           _buildReadOnlyInfo('Email', _emailController.text,
@@ -566,17 +584,44 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Widget _buildReadOnlyInfo(String label, String value, IconData icon,
       ColorScheme colorScheme, TextTheme textTheme) {
-    return TextFormField(
-      initialValue: value,
-      readOnly: true,
-      style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: colorScheme.surfaceVariant.withOpacity(0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide.none,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceVariant.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: colorScheme.primary,
+              size: 24,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -590,11 +635,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     required TextTheme textTheme,
     String? Function(String?)? validator,
     int maxLines = 1,
+    int? maxLength,
   }) {
     return TextFormField(
       controller: controller,
       validator: validator,
       maxLines: maxLines,
+      maxLength: maxLength,
       style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: label,
