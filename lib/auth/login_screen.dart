@@ -576,7 +576,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.push(
                           context,
                           PageTransition(
-                            type: PageTransitionType.rightToLeft,
+                            type: PageTransitionType.sharedAxisHorizontal,
                             child: RegisterScreen(),
                           ),
                         );

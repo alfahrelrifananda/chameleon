@@ -161,6 +161,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // Username Field
                 TextFormField(
                   controller: _usernameController,
+                  maxLength: 25,
                   style: textTheme.bodyLarge
                       ?.copyWith(color: colorScheme.onSurface),
                   decoration: InputDecoration(
