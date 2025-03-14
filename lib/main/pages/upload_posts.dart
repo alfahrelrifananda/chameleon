@@ -514,15 +514,15 @@ class _UploadPostsState extends State<UploadPosts> {
                   _pickImage(ImageSource.gallery);
                 },
               ),
-              ListTile(
-                leading: Icon(Icons.photo_camera, color: colorScheme.primary),
-                title: Text('Kamera',
-                    style: TextStyle(color: colorScheme.onSurface)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
+              // ListTile(
+              //   leading: Icon(Icons.photo_camera, color: colorScheme.primary),
+              //   title: Text('Kamera',
+              //       style: TextStyle(color: colorScheme.onSurface)),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     _pickImage(ImageSource.camera);
+              //   },
+              // ),
             ],
           );
         },
