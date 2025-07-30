@@ -1,57 +1,52 @@
-# Chameleon : Aplikasi Galeri Online Open Source Flutter
+# Chameleon: An Open Source Flutter Online Gallery App
 
-Chameleon adalah aplikasi galeri online open source yang dibangun dengan Flutter. Aplikasi ini dirancang untuk memberikan pengalaman yang mulus dan intuitif bagi pengguna untuk mengelola dan menampilkan koleksi foto dan video mereka.
+Chameleon is an open source online gallery app built with Flutter. It is designed to provide users with a seamless and intuitive experience for managing and displaying their photo and video collections.
 
-## Fitur Utama
+## Key Features
 
-- **Antarmuka Pengguna yang Menarik:** Antarmuka pengguna yang modern dan responsif untuk pengalaman visual yang menyenangkan.
-- **Manajemen Media yang Mudah:** Unggah, atur, dan hapus foto dan video dengan mudah.
-- **Album dan Koleksi:** Atur media ke dalam album dan koleksi untuk penelusuran yang mudah.
-- **Pencarian Cepat:** Temukan foto dan video dengan cepat menggunakan fitur pencarian yang canggih.
-- **Open Source dan Dapat Disesuaikan:** Sesuaikan aplikasi sesuai kebutuhan Anda.
-- **Lintas Platform:** Berjalan di Android, iOS, dan web.
+- **Attractive User Interface:** A modern and responsive user interface for a visually pleasing experience.
+- **Easy Media Management:** Easily upload, organize, and delete photos and videos.
+- **Albums and Collections:** Organize media into albums and collections for easy browsing.
+- **Quick Search:** Quickly find photos and videos using the powerful search feature.
+- **Open Source and Customizable:** Customize the app to suit your needs.
 
-## Cara Memulai
+## Getting Started
 
-1.  **Prasyarat:**
+1. **Prerequisites:**
 
-    - Flutter SDK terinstal
-    - Android Studio atau VSCode
-    - Git
+- Flutter SDK installed
+- Android Studio or VSCode
+- Git
 
-2.  **Kloning repositori:**
+2. **Clone the repository:**
 
-    ```bash
-    git clone https://github.com/alfahrelrifananda/chameleon.git
-    cd chameleon
-    ```
+```bash
+git clone https://github.com/alfahrelrifananda/chameleon.git
+cd chameleon
+```
 
-3.  **Dapatkan dependensi:**
+3. **Get dependencies:**
 
-    ```bash
-    flutter pub get
-    ```
+```bash
+flutter pub get
+```
 
-4.  **Jalankan aplikasi:**
+4. **Run the app:**
 
-    ```bash
-    flutter run
-    ```
+```bash
+flutter run
+```
 
-## Kontribusi
+## Contributions
 
-Kami menyambut kontribusi dari komunitas. Jika Anda ingin berkontribusi pada Chameleon, silakan ikuti langkah-langkah berikut:
+We welcome contributions from the community. If you would like to contribute to Chameleon, please follow these steps:
 
-1.  Fork repositori.
-2.  Buat branch fitur Anda (`git checkout -b fitur/fitur-baru`).
-3.  Lakukan perubahan Anda (`git commit -am 'Tambahkan fitur baru'`).
-4.  Dorong ke branch (`git push origin fitur/fitur-baru`).
-5.  Buat Pull Request baru.
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feature/new-feature`).
+3. Commit your changes (`git commit -am 'Add new feature'`).
+4. Push to the branch (`git push origin feature/new-feature`).
+5. Create a new Pull Request.
+   
+## Support
 
-## Lisensi
-
-Chameleon dilisensikan di bawah Lisensi GPL-3.0.
-
-## Dukungan
-
-Jika Anda memiliki pertanyaan atau masalah, silakan buka masalah di GitHub.
+If you have any questions or concerns, please open an issue on GitHub.
